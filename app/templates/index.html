@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gene Expression Data Explorer - TNBC Dashboard</title>
+
+<style>
+body {
+    font-family: Arial;
+    background-color: #f5f7fb;
+    margin: 0;
+}
+
+nav {
+    background: #2d6cdf;
+    padding: 12px;
+    text-align: center;
+}
+
+nav a {
+    color: white;
+    margin: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+header {
+    text-align: center;
+    padding: 20px;
+}
+
+.container {
+    width: 80%;
+    margin: auto;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.metrics {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.metric-box {
+    background: #eef2f7;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    width: 22%;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background-color: #2d6cdf;
+    color: white;
+    padding: 10px;
+}
+
+td {
+    padding: 8px;
+    text-align: center;
+}
+
+.section {
+    display: none;
+}
+</style>
+
+<script>
+function showSection(sectionId) {
+    document.querySelectorAll(".section").forEach(sec => {
+        sec.style.display = "none";
+    });
+    document.getElementById(sectionId).style.display = "block";
+}
+
+window.onload = function() {
+    {% if searched_gene %}
+        showSection('search');
+    {% else %}
+        showSection('home');
+    {% endif %}
+};
+</script>
+
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav>
+    <a onclick="showSection('home')">HOME</a>
+    <a onclick="showSection('browse')">BROWSE</a>
+    <a onclick="showSection('search')">SEARCH</a>
+    <a onclick="showSection('help')">HELP</a>
+</nav>
+
+<header>
+    <h1>Gene Expression Data Explorer</h1>
+    <p>Interactive scRNA-seq analysis of TNBC data </p>
+</header>
+
+<div class="container">
+
+<!-- HOME -->
+<div id="home" class="section">
+    <div class="card">
+        <h3>Study Information</h3>
+
+        <p><strong>GEO:</strong> GSE266356</p>
+        <p><strong>Disease:</strong> Triple-Negative Breast Cancer</p>
+        <p><strong>Dataset:</strong> scRNA-seq</p>
+       
+        <hr style="margin:15px 0;">
+
+        <p style="margin-top:10px;" >
+   This dataset contains single-cell RNA sequencing data from triple-negative breast cancer samples,
+    capturing gene expression across different treatment conditions.
+    </p>     
+
+    <p><strong>Total Cells:</strong> {{ database_stats.cells }}</p>
+    <p><strong>Total Genes:</strong> {{ database_stats.genes }}</p>
+
+    <p><strong>Conditions:</strong> Parental, Paclitaxel-resistant, Doxorubicin-resistant</p>
+    <p><strong>Culture Types:</strong> Attached, Spheroid</p>
+
+    <p>
+        <strong>GEO Link:</strong>
+        <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE266356" target="_blank">
+            View Dataset
+        </a>      
+    </p>
+
+    </div>
+</div>
+
+<!-- BROWSE -->
+
+<div id="browse" class="section">
+    <div class="card">
+        <h3>Browse Genes</h3>
+
+        <form method="GET">
+            <select name="gene">
+                <option value="">-- Select Gene --</option>
+
+                {% for g in genes %}
+                    <option value="{{ g['gene_symbol'] }}">{{ g['gene_symbol'] }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit">View</button>
+        </form>
+    </div>
+</div>
+
+<!-- SEARCH -->
+<div id="search" class="section">
+
+    <!-- SEARCH BOX -->
+    <div class="card">
+
+        <h3>Search Gene</h3>
+    
+        <form method="GET">  
+            
+            <input
+                type="text"
+                name="gene"
+                list="gene_list"
+                value="{{ searched_gene }}"
+                placeholder="Enter gene (e.g., ABCB1)"
+            >
+
+            <datalist id="gene_list">
+                {% for g in genes %} 
+                    <option value="{{ g.gene_symbol }}"></option>
+                {% endfor %}
+            </datalist>
+
+            <button type="submit">Search</button>
+        </form>
+        
+        {% if searched_gene and not gene_summary %}
+            <p style="color:red;">Gene "{{ searched_gene }}" not found</p>
+        {% endif %}
+    </div>  
+
+    <!-- MOVE RESULTS HERE -->
+    {% if gene_summary %}
+    <div class="card">
+
+        <h2>{{ searched_gene }}</h2>
+
+        <div style="margin-bottom:15px;">     
+            <a href="{{ url_for('download', gene=searched_gene) }}">
+                <button style="
+                 padding:8px 15px;
+                 background:#2d6cdf;
+                 color:white;
+                 border:none;
+                 border-radius:5px;
+                 cursor:pointer;
+             ">
+                Download CSV
+         </button>
+     </a>
+ </div>
+        <div class="metrics">
+            <div class="metric-box">
+                <h2>{{ gene_summary.expressing_cells }}</h2>
+                <p>Cells</p>
+            </div>
+
+            <div class="metric-box">
+                <h2>{{ gene_summary.percent_cells }}%</h2>
+                <p>Prevalence</p>
+            </div>
+
+            <div class="metric-box">
+                <h2>{{ gene_summary.mean_expression }}</h2>
+                <p>Mean</p>
+            </div>
+
+            <div class="metric-box">
+                <h2>{{ gene_summary.max_expression }}</h2>
+                <p>Max</p>
+            </div>
+        </div>
+
+        
+        {% if gene_samples %}
+        <h3>Expression by Sample</h3>
+        <table>
+            <tr>
+                <th>Population</th>
+                <th>Treatment</th>
+                <th>Culture</th>
+                <th>Cells</th>
+                <th>Mean</th>
+                <th>Max</th>
+            </tr>
+
+            {% for row in gene_samples %}
+            <tr>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>{{ row[3] }}</td>
+                <td>{{ row[4] }}</td>
+                <td>{{ row[5] }}</td>
+                <td>{{ row[6] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+
+
+
+        <!-- PLOT -->
+        {% if plot_file %}
+        <h3>Expression Plot</h3>
+        <div style="text-align:center; margin-top:20px;">
+            <img
+        src="{{ url_for('static', filename=plot_file) }}"
+        alt="{{ searched_gene }} expression plot"
+        style="
+            width:650px;
+            max-width:100%;
+            border-radius:10px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.2);
+        "
+        >
+  </div>
+  {% endif %}
+
+  </div> 
+  {% endif %}
+
+</div>  
+
+<!-- HELP -->
+<div id="help" class="section" style="display:none;">
+    <div class="card">
+        <h3>Help</h3>
+
+        <p style="color:gray; margin-bottom:15px;">
+            Quick guide to explore gene expression data using this tool.
+        </p>
+
+         <h4 style="margin-top:20px;">🧬 About</h4>
+        <p>
+            This tool enables interactive exploration of single-cell RNA-seq data 
+            from triple-negative breast cancer samples.
+        </p>
+
+        <h4>🔍 How to Use</h4>
+        <ul>
+            <li>Use the <strong>Search</strong> tab to type a gene name (e.g., ABCB1)</li>
+            <li>Or go to <strong>Browse</strong> to select from the gene list</li>
+        </ul>
+
+        <h4>📊 What You Will See</h4>
+        <ul>
+            <li><strong>Summary metrics</strong> – total cells, prevalence, mean, max expression</li>
+            <li><strong>Sample table</strong> – expression across conditions</li>
+            <li><strong>Expression plot</strong> – compare gene expression across conditions</li>
+            <li>Try example genes: <strong>ABCB1</strong>, <strong>ABCG2</strong></li>
+        </ul>
+
+        <h4>⬇️ Download Data</h4>
+        <ul>
+            <li>Click <strong>Download CSV</strong> to export gene expression data</li>
+        </ul>
+
+        <h4>⚠ ️ Notes</h4>
+        <ul>
+            <li>Gene names are case-insensitive (abcB1 → ABCB1)</li>
+            <li>If a gene is not found, check spelling</li>
+        </ul>
+
+        <p style="background:#eef2f7; padding:10px; border-radius:8px; margin-top:20px;">       
+           💡 Tip: Try genes like <strong>ABCB1</strong> to see strong drug-resistance patterns.
+        </p>
+
+    </div>
+</div>
+
+</div>  
+
+
+<hr style="margin-top:40px;">
+
+<footer style="
+    text-align:center;
+    padding:15px;
+    margin-top:10px;
+    color:#666;
+    font-size:14px;
+">
+    Developed by <strong>Geetha Ranganathan</strong>   &middot; 2026
+</footer>
+
+</body>
+</html>
