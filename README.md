@@ -15,8 +15,18 @@ This project is a Flask-based web application that allows users to:
 - ⬇️ Download data as CSV
 
 ---
+## 📦 Database
 
-## 📂 Dataset Information
+Due to the large size (~347MB), the SQLite database is not included in this repository.
+
+### How to run the project
+
+To use this application, you need the database file:
+
+- Option 1: Recreate the database using provided scripts (if available)
+- Option 2: Contact the author for access to the dataset
+
+### Dataset source
 
 - **GEO Accession:** GSE266356  
 - **Disease:** Triple-Negative Breast Cancer (TNBC)  
